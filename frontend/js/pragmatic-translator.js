@@ -2,7 +2,7 @@
 const CONFIG = {
     // GitHub Pages URLs for your vector files
     vectorBaseUrl: 'https://alainamb.github.io/pragmatic-auto-translator/vectors/gai/',
-    // Hugging Face API configuration
+    // Hugging Face API configuration - using legacy API endpoint
     hfApiUrl: 'https://api-inference.huggingface.co/models/',
     vectorModel: 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
     // Helsinki translation models (bidirectional)
@@ -174,16 +174,21 @@ async function textToVector(text) {
     console.log('🔗 Using model:', CONFIG.vectorModel);
     
     try {
+        // Format the input as an array of sentences for sentence-transformers
+        const payload = {
+            inputs: [text], // Wrap in array - this is the key fix!
+            options: { wait_for_model: true }
+        };
+        
+        console.log('📤 Sending payload:', payload);
+
         const response = await fetch(`${CONFIG.hfApiUrl}${CONFIG.vectorModel}`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${hfApiKey}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                inputs: text,
-                options: { wait_for_model: true }
-            })
+            body: JSON.stringify(payload)
         });
 
         console.log('📡 Vector API response status:', response.status);
@@ -196,20 +201,38 @@ async function textToVector(text) {
 
         const result = await response.json();
         console.log('📊 Raw vector API result:', result);
+        console.log('📊 Result type:', Array.isArray(result) ? 'Array' : typeof result);
+        console.log('📊 Result length:', Array.isArray(result) ? result.length : 'N/A');
         
-        // Handle different response formats
+        // Handle different response formats - sentence-transformers returns array of embeddings
         let finalVector;
         if (Array.isArray(result) && result.length > 0) {
-            finalVector = result[0]; // First result is usually the vector
-        } else if (result.embeddings) {
+            // For sentence-transformers, first element is the embedding array
+            finalVector = result[0];
+            console.log('📊 Using first element from result array');
+        } else if (result.embeddings && Array.isArray(result.embeddings)) {
             finalVector = result.embeddings[0];
+            console.log('📊 Using first embedding from embeddings array');
         } else {
             finalVector = result;
+            console.log('📊 Using result directly');
         }
         
         console.log('✅ Final vector type:', Array.isArray(finalVector) ? 'Array' : typeof finalVector);
         console.log('📏 Final vector length:', Array.isArray(finalVector) ? finalVector.length : 'N/A');
         
+        // Validate the vector
+        if (!Array.isArray(finalVector)) {
+            console.error('❌ Expected array vector, got:', typeof finalVector);
+            throw new Error('Vector response is not an array');
+        }
+        
+        if (finalVector.length === 0) {
+            console.error('❌ Vector is empty');
+            throw new Error('Vector response is empty');
+        }
+        
+        console.log('✅ Vector validation passed');
         return finalVector;
         
     } catch (error) {
