@@ -36,6 +36,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# API Configuration (contains sensitive API keys)
+frontend/js/api-config.js
+
 # Project-specific ignores
 # Corpus processing folders
 corpora/gai/eng/for-processing/

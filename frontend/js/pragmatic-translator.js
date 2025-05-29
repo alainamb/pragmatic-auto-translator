@@ -44,9 +44,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupRatingSystem();
     await loadVectorData();
     
-    // Don't prompt immediately - wait for user to try translating
+    // Try to load API key from config file
+    await loadAPIConfig();
+    
     console.log('✅ Initialization complete');
 });
+
+// Load API configuration from separate file
+async function loadAPIConfig() {
+    console.log('🔑 Attempting to load API configuration...');
+    
+    try {
+        // Try to load the config file
+        const script = document.createElement('script');
+        script.src = 'frontend/js/api-config.js';
+        
+        // Wait for script to load
+        await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+        
+        // Check if API key is available and valid
+        if (window.API_CONFIG && window.API_CONFIG.HUGGING_FACE_API_KEY && 
+            window.API_CONFIG.HUGGING_FACE_API_KEY !== 'your_actual_api_key_here') {
+            hfApiKey = window.API_CONFIG.HUGGING_FACE_API_KEY;
+            console.log('✅ API key loaded from config file');
+            showStatus('API configuration loaded successfully', 'success');
+        } else {
+            console.log('⚠️ API config file found but key not set');
+            showStatus('API key needs to be configured in api-config.js', 'error');
+        }
+        
+    } catch (error) {
+        console.log('⚠️ API config file not found, will prompt user when needed');
+        console.log('💡 Create frontend/js/api-config.js with your API key to avoid prompting');
+    }
+}
 
 // Setup language toggle functionality
 function setupLanguageToggle() {
@@ -630,12 +665,10 @@ function displayTranslationResults(translation, similarContent, targetLangName) 
 
     console.log('✅ Final translation text:', translationText);
 
+    // Clean display without green box or redundant heading
     translationOutput.innerHTML = `
-        <div style="border: 2px solid var(--primary-green); border-radius: 8px; padding: 1rem; background-color: #f0fdf4;">
-            <p><strong>Translation to ${targetLangName}:</strong></p>
-            <div style="font-size: 1.1em; line-height: 1.6; margin-top: 1rem; font-weight: 500;">
-                ${formattedTranslation || `<p>${translationText}</p>`}
-            </div>
+        <div style="font-size: 1.1em; line-height: 1.6; font-weight: 400; color: #374151;">
+            ${formattedTranslation || `<p>${translationText}</p>`}
         </div>
     `;
     
