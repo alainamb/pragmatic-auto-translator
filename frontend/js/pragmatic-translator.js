@@ -174,21 +174,20 @@ async function textToVector(text) {
     console.log('🔗 Using model:', CONFIG.vectorModel);
     
     try {
-        // Try the feature-extraction task directly instead of sentence similarity
-        const featureExtractionUrl = `${CONFIG.hfApiUrl}${CONFIG.vectorModel}`;
+        // First attempt: Standard feature extraction format
+        console.log('📤 Trying standard feature extraction format...');
         
-        // Use inputs format for feature extraction
         const payload = {
-            inputs: text, // Single text for feature extraction
+            inputs: text,
             options: { 
                 wait_for_model: true,
                 use_cache: false
             }
         };
         
-        console.log('📤 Sending payload to feature extraction API:', payload);
+        console.log('📤 Sending payload:', payload);
 
-        const response = await fetch(featureExtractionUrl, {
+        const response = await fetch(`${CONFIG.hfApiUrl}${CONFIG.vectorModel}`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${hfApiKey}`,
@@ -201,94 +200,98 @@ async function textToVector(text) {
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('❌ Vector API error response:', errorText);
+            console.error('❌ First API format failed:', errorText);
             
-            // Try alternative format if first attempt fails
-            console.log('🔄 Trying alternative API format...');
+            // Try alternative format immediately
+            console.log('🔄 Trying alternative API format with sentences parameter...');
             return await tryAlternativeVectorAPI(text);
         }
 
         const result = await response.json();
-        console.log('📊 Raw vector API result:', result);
-        console.log('📊 Result type:', Array.isArray(result) ? 'Array' : typeof result);
-        console.log('📊 Result length:', Array.isArray(result) ? result.length : 'N/A');
-        
-        // Handle the response - should be embeddings
-        let finalVector;
-        if (Array.isArray(result)) {
-            if (Array.isArray(result[0])) {
-                // Nested array - take first embedding
-                finalVector = result[0];
-                console.log('📊 Using first nested array');
-            } else {
-                // Flat array - this is the vector
-                finalVector = result;
-                console.log('📊 Using flat array as vector');
-            }
-        } else {
-            throw new Error('Unexpected response format from vector API');
-        }
-        
-        console.log('✅ Final vector type:', Array.isArray(finalVector) ? 'Array' : typeof finalVector);
-        console.log('📏 Final vector length:', Array.isArray(finalVector) ? finalVector.length : 'N/A');
-        
-        // Validate the vector
-        if (!Array.isArray(finalVector)) {
-            console.error('❌ Expected array vector, got:', typeof finalVector);
-            throw new Error('Vector response is not an array');
-        }
-        
-        if (finalVector.length === 0) {
-            console.error('❌ Vector is empty');
-            throw new Error('Vector response is empty');
-        }
-        
-        console.log('✅ Vector validation passed');
-        return finalVector;
+        console.log('📊 Standard API worked! Result:', result);
+        return processVectorResult(result);
         
     } catch (error) {
-        console.error('❌ Error in textToVector:', error);
-        throw error;
+        console.error('❌ Error in standard API format:', error);
+        console.log('🔄 Trying alternative API format as fallback...');
+        
+        try {
+            return await tryAlternativeVectorAPI(text);
+        } catch (altError) {
+            console.error('❌ Both API formats failed');
+            throw new Error(`Vector API failed. Standard: ${error.message}, Alternative: ${altError.message}`);
+        }
     }
 }
 
-// Alternative API format if the main one fails
+// Alternative API format with sentences parameter
 async function tryAlternativeVectorAPI(text) {
-    console.log('🔄 Trying alternative vector API format...');
+    console.log('🔄 tryAlternativeVectorAPI called');
     
-    try {
-        // Try with sentences parameter as the error suggests
-        const alternativePayload = {
-            sentences: [text], // Array format with sentences parameter
-            options: { wait_for_model: true }
-        };
-        
-        console.log('📤 Sending alternative payload:', alternativePayload);
-        
-        const response = await fetch(`${CONFIG.hfApiUrl}${CONFIG.vectorModel}`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${hfApiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(alternativePayload)
-        });
+    const alternativePayload = {
+        sentences: [text], // Use sentences parameter as error message suggests
+        options: { wait_for_model: true }
+    };
+    
+    console.log('📤 Sending alternative payload:', alternativePayload);
+    
+    const response = await fetch(`${CONFIG.hfApiUrl}${CONFIG.vectorModel}`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${hfApiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(alternativePayload)
+    });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Alternative API also failed: ${response.status} - ${errorText}`);
-        }
+    console.log('📡 Alternative API response status:', response.status);
 
-        const result = await response.json();
-        console.log('✅ Alternative API worked! Result:', result);
-        
-        // Return the first embedding
-        return Array.isArray(result) ? result[0] : result;
-        
-    } catch (error) {
-        console.error('❌ Alternative API also failed:', error);
-        throw new Error(`Both API formats failed. Original error: ${error.message}`);
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Alternative API error:', errorText);
+        throw new Error(`Alternative API failed: ${response.status} - ${errorText}`);
     }
+
+    const result = await response.json();
+    console.log('✅ Alternative API worked! Result:', result);
+    return processVectorResult(result);
+}
+
+// Process vector result regardless of API format
+function processVectorResult(result) {
+    console.log('📊 Processing vector result:', result);
+    console.log('📊 Result type:', Array.isArray(result) ? 'Array' : typeof result);
+    console.log('📊 Result length:', Array.isArray(result) ? result.length : 'N/A');
+    
+    let finalVector;
+    
+    if (Array.isArray(result)) {
+        if (Array.isArray(result[0])) {
+            // Nested array - take first embedding
+            finalVector = result[0];
+            console.log('📊 Using first nested array');
+        } else {
+            // Flat array - this is the vector
+            finalVector = result;
+            console.log('📊 Using flat array as vector');
+        }
+    } else if (result.embeddings && Array.isArray(result.embeddings)) {
+        finalVector = result.embeddings[0];
+        console.log('📊 Using first embedding from embeddings array');
+    } else {
+        throw new Error('Unexpected vector response format');
+    }
+    
+    console.log('✅ Final vector type:', Array.isArray(finalVector) ? 'Array' : typeof finalVector);
+    console.log('📏 Final vector length:', Array.isArray(finalVector) ? finalVector.length : 'N/A');
+    
+    // Validate the vector
+    if (!Array.isArray(finalVector) || finalVector.length === 0) {
+        throw new Error('Invalid vector: not an array or empty');
+    }
+    
+    console.log('✅ Vector validation passed');
+    return finalVector;
 }
 
 // Calculate cosine similarity between two vectors
