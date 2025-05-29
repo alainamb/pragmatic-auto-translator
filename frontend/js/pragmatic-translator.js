@@ -174,15 +174,21 @@ async function textToVector(text) {
     console.log('🔗 Using model:', CONFIG.vectorModel);
     
     try {
-        // Format the input as an array of sentences for sentence-transformers
+        // Try the feature-extraction task directly instead of sentence similarity
+        const featureExtractionUrl = `${CONFIG.hfApiUrl}${CONFIG.vectorModel}`;
+        
+        // Use inputs format for feature extraction
         const payload = {
-            inputs: [text], // Wrap in array - this is the key fix!
-            options: { wait_for_model: true }
+            inputs: text, // Single text for feature extraction
+            options: { 
+                wait_for_model: true,
+                use_cache: false
+            }
         };
         
-        console.log('📤 Sending payload:', payload);
+        console.log('📤 Sending payload to feature extraction API:', payload);
 
-        const response = await fetch(`${CONFIG.hfApiUrl}${CONFIG.vectorModel}`, {
+        const response = await fetch(featureExtractionUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${hfApiKey}`,
@@ -196,7 +202,10 @@ async function textToVector(text) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('❌ Vector API error response:', errorText);
-            throw new Error(`API request failed: ${response.status} - ${errorText}`);
+            
+            // Try alternative format if first attempt fails
+            console.log('🔄 Trying alternative API format...');
+            return await tryAlternativeVectorAPI(text);
         }
 
         const result = await response.json();
@@ -204,18 +213,20 @@ async function textToVector(text) {
         console.log('📊 Result type:', Array.isArray(result) ? 'Array' : typeof result);
         console.log('📊 Result length:', Array.isArray(result) ? result.length : 'N/A');
         
-        // Handle different response formats - sentence-transformers returns array of embeddings
+        // Handle the response - should be embeddings
         let finalVector;
-        if (Array.isArray(result) && result.length > 0) {
-            // For sentence-transformers, first element is the embedding array
-            finalVector = result[0];
-            console.log('📊 Using first element from result array');
-        } else if (result.embeddings && Array.isArray(result.embeddings)) {
-            finalVector = result.embeddings[0];
-            console.log('📊 Using first embedding from embeddings array');
+        if (Array.isArray(result)) {
+            if (Array.isArray(result[0])) {
+                // Nested array - take first embedding
+                finalVector = result[0];
+                console.log('📊 Using first nested array');
+            } else {
+                // Flat array - this is the vector
+                finalVector = result;
+                console.log('📊 Using flat array as vector');
+            }
         } else {
-            finalVector = result;
-            console.log('📊 Using result directly');
+            throw new Error('Unexpected response format from vector API');
         }
         
         console.log('✅ Final vector type:', Array.isArray(finalVector) ? 'Array' : typeof finalVector);
@@ -238,6 +249,45 @@ async function textToVector(text) {
     } catch (error) {
         console.error('❌ Error in textToVector:', error);
         throw error;
+    }
+}
+
+// Alternative API format if the main one fails
+async function tryAlternativeVectorAPI(text) {
+    console.log('🔄 Trying alternative vector API format...');
+    
+    try {
+        // Try with sentences parameter as the error suggests
+        const alternativePayload = {
+            sentences: [text], // Array format with sentences parameter
+            options: { wait_for_model: true }
+        };
+        
+        console.log('📤 Sending alternative payload:', alternativePayload);
+        
+        const response = await fetch(`${CONFIG.hfApiUrl}${CONFIG.vectorModel}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${hfApiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(alternativePayload)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Alternative API also failed: ${response.status} - ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Alternative API worked! Result:', result);
+        
+        // Return the first embedding
+        return Array.isArray(result) ? result[0] : result;
+        
+    } catch (error) {
+        console.error('❌ Alternative API also failed:', error);
+        throw new Error(`Both API formats failed. Original error: ${error.message}`);
     }
 }
 
