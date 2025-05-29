@@ -1,0 +1,10 @@
+Markup syntax for JSON content files
+
+Use the following markup syntax to indicate the WYS (what you see) formatting elements of submission files our plaintext JSON content files.
+
+*Italics*
+
+**Bold**
+
+^Superscript^
+
