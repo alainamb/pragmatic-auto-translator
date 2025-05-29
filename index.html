@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pragmatic Auto-Translator</title>
+    <link rel="stylesheet" href="frontend/css/styles.css">
+</head>
+<body>
+    <header class="header">
+        <nav class="nav-container">
+            <h1 class="nav-title">Pragmatic Auto-Translator</h1>
+            <div class="nav-items">
+                <a href="#" class="nav-item">Auto-Translator</a>
+                <a href="#" class="nav-item">About</a>
+                <a href="#" class="nav-item">Contact</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="main-container">
+        <!-- Language Selection -->
+        <section class="section-card">
+            <h2>Translation Direction</h2>
+            <div class="language-switcher">
+                <span>Translate from:</span>
+                <div class="language-toggle">
+                    <button class="language-option active" data-lang="en">English</button>
+                    <button class="language-option" data-lang="es">Spanish</button>
+                </div>
+                <span>→</span>
+                <span id="targetLanguage">Spanish</span>
+            </div>
+            <div class="corpus-info">
+                <strong>Corpus Domain:</strong> Generative Artificial Intelligence
+                <br>
+                <strong>Context:</strong> This translator references domain-specific content to provide contextually-aware translations
+            </div>
+        </section>
+
+        <!-- Source Text Input -->
+        <section class="section-card">
+            <h2>Source Text</h2>
+            <textarea 
+                id="sourceText" 
+                class="text-input" 
+                placeholder="Enter your text here for translation..."
+                rows="8"></textarea>
+            <button id="translateButton" class="translate-button">
+                Translate with Context
+            </button>
+            <div id="statusIndicator" class="status-indicator hidden"></div>
+        </section>
+
+        <!-- Translation Output -->
+        <section class="section-card">
+            <h2>Translation</h2>
+            <div id="translationOutput" class="translation-container">
+                <p style="color: var(--gray-500); font-style: italic;">
+                    Your translation will appear here...
+                </p>
+            </div>
+            
+            <!-- Context Information -->
+            <div id="contextInfo" class="corpus-info hidden">
+                <h3>Context Used:</h3>
+                <p id="contextDetails">Similar content from corpus will be shown here</p>
+            </div>
+        </section>
+
+        <!-- Simple Feedback -->
+        <section class="section-card">
+            <h2>Quality Feedback</h2>
+            <div class="feedback-container">
+                <div class="rating-grid">
+                    <!-- Overall Correspondence Rating -->
+                    <div class="rating-section">
+                        <label class="rating-label">Overall Correspondence</label>
+                        <div class="rating-container" data-category="correspondence">
+                            <button class="rating-star" data-rating="1" aria-label="Rate 1 star">★</button>
+                            <button class="rating-star" data-rating="2" aria-label="Rate 2 stars">★</button>
+                            <button class="rating-star" data-rating="3" aria-label="Rate 3 stars">★</button>
+                            <button class="rating-star" data-rating="4" aria-label="Rate 4 stars">★</button>
+                            <button class="rating-star" data-rating="5" aria-label="Rate 5 stars">★</button>
+                        </div>
+                        <p class="rating-description">1 star = Major meaning shifts, 5 stars = Excellent correspondence</p>
+                        <p class="rating-description">Given the audience and purpose of the translation</p>
+                    </div>
+
+                    <!-- Pragmatic Appropriateness Rating -->
+                    <div class="rating-section">
+                        <label class="rating-label">Pragmatic Appropriateness</label>
+                        <div class="rating-container" data-category="pragmatic">
+                            <button class="rating-star" data-rating="1" aria-label="Rate 1 star">★</button>
+                            <button class="rating-star" data-rating="2" aria-label="Rate 2 stars">★</button>
+                            <button class="rating-star" data-rating="3" aria-label="Rate 3 stars">★</button>
+                            <button class="rating-star" data-rating="4" aria-label="Rate 4 stars">★</button>
+                            <button class="rating-star" data-rating="5" aria-label="Rate 5 stars">★</button>
+                        </div>
+                        <p class="rating-description">1 star = Inappropriate for context, 5 stars = Culturally pragmatic fit</p>
+                        <p class="rating-description">Coherence on a document level and with cultural expectations</p>
+                    </div>
+                </div>
+                
+                <div class="feedback-text-section">
+                    <label class="feedback-label">Comments (Optional)</label>
+                    <textarea 
+                        id="feedbackText" 
+                        class="feedback-textarea" 
+                        placeholder="Any specific feedback about correspondence to the source meaning or pragmatic appropriateness given the target context?"
+                        rows="4"></textarea>
+                </div>
+                
+                <button class="buttons" onclick="submitFeedback()">Submit Feedback</button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>Pragmatic Auto-Translator - UNAM-SMA Workshop Demo</p>
+        <p>By Alaina Brandt - 2025</p>
+    </footer>
+
+    <script>
+        // Language switcher functionality
+        const languageOptions = document.querySelectorAll('.language-option');
+        const targetLanguageSpan = document.getElementById('targetLanguage');
+        const sourceTextArea = document.getElementById('sourceText');
+        const translateButton = document.getElementById('translateButton');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const translationOutput = document.getElementById('translationOutput');
+        const contextInfo = document.getElementById('contextInfo');
+        
+        let currentSourceLang = 'en';
+        
+        // Language toggle functionality
+        languageOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                languageOptions.forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                
+                currentSourceLang = option.dataset.lang;
+                targetLanguageSpan.textContent = currentSourceLang === 'en' ? 'Spanish' : 'English';
+                
+                // Update placeholder text
+                if (currentSourceLang === 'en') {
+                    sourceTextArea.placeholder = 'Enter your English text here for translation to Spanish...';
+                } else {
+                    sourceTextArea.placeholder = 'Ingrese su texto en español aquí para traducir al inglés...';
+                }
+            });
+        });
+        
+        // Translation functionality (placeholder for now)
+        translateButton.addEventListener('click', async () => {
+            const sourceText = sourceTextArea.value.trim();
+            
+            if (!sourceText) {
+                showStatus('Please enter some text to translate', 'error');
+                return;
+            }
+            
+            // Disable button and show loading
+            translateButton.disabled = true;
+            translateButton.textContent = 'Translating...';
+            showStatus('Loading corpus vectors and processing...', 'loading');
+            
+            try {
+                // TODO: Implement actual translation logic here
+                // 1. Load vector files from GitHub Pages
+                // 2. Convert input text to vectors
+                // 3. Find similar content (RAG)
+                // 4. Call LLM with context
+                
+                // Placeholder for demonstration
+                await simulateTranslation(sourceText);
+                
+            } catch (error) {
+                showStatus('Translation failed. Please try again.', 'error');
+                console.error('Translation error:', error);
+            } finally {
+                translateButton.disabled = false;
+                translateButton.textContent = 'Translate with Context';
+            }
+        });
+        
+        // Placeholder translation function
+        async function simulateTranslation(text) {
+            // Simulate processing time
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            const targetLang = currentSourceLang === 'en' ? 'Spanish' : 'English';
+            
+            translationOutput.innerHTML = `
+                <p><strong>Translation to ${targetLang}:</strong></p>
+                <p style="font-size: 1.1em; line-height: 1.6; margin-top: 1rem;">
+                    [Translation will appear here once vector matching and LLM integration is implemented]
+                </p>
+            `;
+            
+            // Show context info
+            contextInfo.classList.remove('hidden');
+            document.getElementById('contextDetails').textContent = 
+                'Found 3 similar documents in corpus. Using context from translation methodology papers.';
+            
+            showStatus('Translation completed using corpus context', 'success');
+        }
+        
+        // Status indicator helper
+        function showStatus(message, type) {
+            statusIndicator.textContent = message;
+            statusIndicator.className = `status-indicator status-${type}`;
+        }
+        
+        // Star rating functionality
+        const ratingContainers = document.querySelectorAll('.rating-container');
+        let ratings = {
+            correspondence: 0,
+            pragmatic: 0
+        };
+        
+        ratingContainers.forEach(container => {
+            const category = container.dataset.category;
+            const stars = container.querySelectorAll('.rating-star');
+            
+            stars.forEach((star, index) => {
+                star.addEventListener('click', () => {
+                    ratings[category] = index + 1;
+                    updateStarDisplay(container, index + 1);
+                });
+                
+                star.addEventListener('mouseenter', () => {
+                    highlightStars(container, index + 1);
+                });
+            });
+            
+            // Reset stars on mouse leave
+            container.addEventListener('mouseleave', () => {
+                updateStarDisplay(container, ratings[category]);
+            });
+        });
+        
+        function updateStarDisplay(container, rating) {
+            const stars = container.querySelectorAll('.rating-star');
+            stars.forEach((star, index) => {
+                star.classList.toggle('active', index < rating);
+            });
+        }
+        
+        function highlightStars(container, count) {
+            const stars = container.querySelectorAll('.rating-star');
+            stars.forEach((star, index) => {
+                star.classList.toggle('active', index < count);
+            });
+        }
+        
+        // Feedback submission
+        function submitFeedback() {
+            const feedbackText = document.getElementById('feedbackText').value;
+            
+            if (ratings.correspondence === 0 || ratings.pragmatic === 0) {
+                alert('Please provide ratings for both Overall Correspondence and Pragmatic Appropriateness before submitting feedback.');
+                return;
+            }
+            
+            // TODO: Implement feedback storage
+            console.log('Feedback submitted:', {
+                correspondence: ratings.correspondence,
+                pragmatic: ratings.pragmatic,
+                text: feedbackText,
+                timestamp: new Date().toISOString()
+            });
+            
+            alert('Thank you for your feedback!');
+            
+            // Reset form
+            ratings.correspondence = 0;
+            ratings.pragmatic = 0;
+            ratingContainers.forEach(container => {
+                updateStarDisplay(container, 0);
+            });
+            document.getElementById('feedbackText').value = '';
+        }
+    </script>
+</body>
+</html>
