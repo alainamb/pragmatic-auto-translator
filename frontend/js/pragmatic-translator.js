@@ -19,6 +19,10 @@ let vectorData = {
     paragraphs: [],
     sections: []
 };
+let documentDatabase = {
+    english: {},
+    spanish: {}
+};
 let hfApiKey = null;
 
 // DOM elements
@@ -113,7 +117,7 @@ async function loadVectorData() {
             `${CONFIG.vectorBaseUrl}gai-section-vectors.json`
         ];
         
-        console.log('🌐 Fetching from URLs:', urls);
+        console.log('🌐 Fetching vector files from URLs:', urls);
         
         const [documentsRes, paragraphsRes, sectionsRes] = await Promise.all([
             fetch(urls[0]),
@@ -121,7 +125,7 @@ async function loadVectorData() {
             fetch(urls[2])
         ]);
 
-        console.log('📡 Response status:', {
+        console.log('📡 Vector files response status:', {
             documents: documentsRes.status,
             paragraphs: paragraphsRes.status,
             sections: sectionsRes.status
@@ -132,7 +136,7 @@ async function loadVectorData() {
         const paragraphsData = await paragraphsRes.json();
         const sectionsData = await sectionsRes.json();
 
-        console.log('📋 Raw data structure:', {
+        console.log('📋 Raw vector data structure:', {
             documents: Object.keys(documentsData),
             paragraphs: Object.keys(paragraphsData),
             sections: Object.keys(sectionsData)
@@ -154,6 +158,10 @@ async function loadVectorData() {
             total: totalVectors
         });
         
+        // Now load the database files for document titles
+        console.log('📚 Loading document databases for titles...');
+        await loadDocumentDatabases();
+        
         showStatus(`Loaded ${vectorData.documents.length} documents, ${vectorData.sections.length} sections, ${vectorData.paragraphs.length} paragraphs (Total: ${totalVectors} vectors)`, 'success');
         
         // Log sample for debugging
@@ -167,6 +175,87 @@ async function loadVectorData() {
         console.error('❌ Error loading vector data:', error);
         showStatus('Failed to load corpus data. Translation may not work optimally.', 'error');
     }
+}
+
+// Load document database files for title lookup
+async function loadDocumentDatabases() {
+    console.log('📚 Loading document databases...');
+    
+    try {
+        const databaseUrls = [
+            'https://alainamb.github.io/pragmatic-auto-translator/corpora/gai/eng/gai-eng_database.json',
+            'https://alainamb.github.io/pragmatic-auto-translator/corpora/gai/esp/gai-esp_database.json'
+        ];
+        
+        console.log('🌐 Fetching database files:', databaseUrls);
+        
+        const [engDatabaseRes, espDatabaseRes] = await Promise.all([
+            fetch(databaseUrls[0]).catch(err => {
+                console.log('⚠️ English database not found, continuing without it');
+                return null;
+            }),
+            fetch(databaseUrls[1]).catch(err => {
+                console.log('⚠️ Spanish database not found, continuing without it');
+                return null;
+            })
+        ]);
+
+        // Load English database
+        if (engDatabaseRes && engDatabaseRes.ok) {
+            const engData = await engDatabaseRes.json();
+            if (engData.documents) {
+                for (const [docId, docData] of Object.entries(engData.documents)) {
+                    documentDatabase.english[docId] = {
+                        title: docData.document_metadata?.title || 'Unknown Title',
+                        authors: docData.document_metadata?.authors || [],
+                        year: docData.document_metadata?.publication_year || 'Unknown Year'
+                    };
+                }
+                console.log('✅ English database loaded:', Object.keys(documentDatabase.english).length, 'documents');
+            }
+        }
+
+        // Load Spanish database
+        if (espDatabaseRes && espDatabaseRes.ok) {
+            const espData = await espDatabaseRes.json();
+            if (espData.documents) {
+                for (const [docId, docData] of Object.entries(espData.documents)) {
+                    documentDatabase.spanish[docId] = {
+                        title: docData.document_metadata?.title || 'Título Desconocido',
+                        authors: docData.document_metadata?.authors || [],
+                        year: docData.document_metadata?.publication_year || 'Año Desconocido'
+                    };
+                }
+                console.log('✅ Spanish database loaded:', Object.keys(documentDatabase.spanish).length, 'documents');
+            }
+        }
+
+        console.log('📚 Document databases loaded successfully');
+        
+    } catch (error) {
+        console.error('❌ Error loading document databases:', error);
+        console.log('⚠️ Continuing without document title lookup');
+    }
+}
+
+// Get document title from database
+function getDocumentTitle(documentId) {
+    // Try English database first
+    if (documentDatabase.english[documentId]) {
+        return documentDatabase.english[documentId];
+    }
+    
+    // Then try Spanish database
+    if (documentDatabase.spanish[documentId]) {
+        return documentDatabase.spanish[documentId];
+    }
+    
+    // Fallback to document ID
+    return {
+        title: documentId,
+        authors: [],
+        year: 'Unknown'
+    };
 }
 
 // Convert text to vector using Hugging Face API
@@ -524,46 +613,96 @@ function displayTranslationResults(translation, similarContent, targetLangName) 
         console.log('📝 Extracted from array format:', translationText);
     } else if (translation.translation_text) {
         translationText = translation.translation_text;
-        console.log('📝 Extracted from .translation_text:', translationText);
     } else if (translation.generated_text) {
         translationText = translation.generated_text;
-        console.log('📝 Extracted from .generated_text:', translationText);
     } else {
         translationText = 'Translation format not recognized';
         console.error('❌ Unexpected translation format:', translation);
     }
+
+    // Preserve paragraph structure by converting line breaks to HTML
+    const formattedTranslation = translationText
+        .split('\n\n')  // Split on double line breaks (paragraphs)
+        .map(paragraph => paragraph.trim())
+        .filter(paragraph => paragraph.length > 0)
+        .map(paragraph => `<p style="margin-bottom: 1rem;">${paragraph}</p>`)
+        .join('');
 
     console.log('✅ Final translation text:', translationText);
 
     translationOutput.innerHTML = `
         <div style="border: 2px solid var(--primary-green); border-radius: 8px; padding: 1rem; background-color: #f0fdf4;">
             <p><strong>Translation to ${targetLangName}:</strong></p>
-            <p style="font-size: 1.1em; line-height: 1.6; margin-top: 1rem; font-weight: 500;">
-                ${translationText}
-            </p>
+            <div style="font-size: 1.1em; line-height: 1.6; margin-top: 1rem; font-weight: 500;">
+                ${formattedTranslation || `<p>${translationText}</p>`}
+            </div>
         </div>
     `;
     
-    // Show context info
+    // Show context info with improved formatting
     contextInfo.classList.remove('hidden');
     if (similarContent.length > 0) {
         console.log('📋 Displaying context for', similarContent.length, 'similar items');
         
         const contextHtml = similarContent.map((item, i) => {
             const preview = item.content.substring(0, 150);
-            const titleInfo = item.title ? ` - "${item.title}"` : '';
+            const vectorType = item.level; // documents, sections, or paragraphs
+            
+            // Fix the capitalization bug - convert plural to singular properly
+            let displayType;
+            if (vectorType === 'documents') {
+                displayType = 'Document';
+            } else if (vectorType === 'sections') {
+                displayType = 'Section';
+            } else if (vectorType === 'paragraphs') {
+                displayType = 'Paragraph';
+            } else {
+                // Fallback for any other types
+                displayType = vectorType.charAt(0).toUpperCase() + vectorType.slice(1);
+            }
+            
+            // Get document info from database
+            let documentInfo = { title: 'Unknown Document', year: 'Unknown' };
+            
+            if (item.metadata && item.metadata.document_id) {
+                documentInfo = getDocumentTitle(item.metadata.document_id);
+            } else if (item.id) {
+                // For document-level vectors, the ID is the document ID
+                if (vectorType === 'documents') {
+                    documentInfo = getDocumentTitle(item.id);
+                } else {
+                    // For section/paragraph vectors, try to extract document ID
+                    // This might need adjustment based on your ID format
+                    const parts = item.id.split('_');
+                    if (parts.length > 1) {
+                        const possibleDocId = parts[0] + '_' + parts[1]; // e.g., gai-eng_item001
+                        documentInfo = getDocumentTitle(possibleDocId);
+                    }
+                }
+            }
+            
             return `
-                <div style="margin-bottom: 0.75rem; padding: 0.5rem; background-color: #f9fafb; border-radius: 4px;">
-                    <strong>${i + 1}. ${item.level}${titleInfo}</strong><br>
-                    <span style="font-size: 0.875rem; color: #059669;">Similarity: ${(item.similarity * 100).toFixed(1)}%</span><br>
-                    <span style="font-size: 0.875rem; color: #6b7280;">"${preview}${preview.length < item.content.length ? '...' : ''}"</span>
+                <div style="margin-bottom: 1rem; padding: 0.75rem; background-color: #f9fafb; border-radius: 6px; border-left: 4px solid var(--primary-blue);">
+                    <div style="margin-bottom: 0.5rem;">
+                        <strong>${i + 1}. ${displayType}</strong>
+                        <span style="font-size: 0.875rem; color: #059669; margin-left: 0.5rem;">
+                            Similarity: ${(item.similarity * 100).toFixed(1)}%
+                        </span>
+                    </div>
+                    <div style="margin-bottom: 0.5rem; font-size: 0.9rem; color: #374151;">
+                        <strong>📄 ${documentInfo.title}</strong>
+                        ${documentInfo.year !== 'Unknown' ? ` (${documentInfo.year})` : ''}
+                    </div>
+                    <div style="font-size: 0.875rem; color: #6b7280; font-style: italic;">
+                        "${preview}${preview.length < item.content.length ? '...' : ''}"
+                    </div>
                 </div>
             `;
         }).join('');
         
         document.getElementById('contextDetails').innerHTML = `
             <strong>Corpus Context Used:</strong><br>
-            <div style="margin-top: 0.5rem;">
+            <div style="margin-top: 0.75rem;">
                 ${contextHtml}
             </div>
         `;
