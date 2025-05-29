@@ -173,10 +173,10 @@ async function textToVector(text) {
     console.log('🧮 textToVector called with text length:', text.length);
     console.log('🔗 Using model:', CONFIG.vectorModel);
     
+    // First attempt: Standard feature extraction format
+    console.log('📤 Attempting standard feature extraction format...');
+    
     try {
-        // First attempt: Standard feature extraction format
-        console.log('📤 Trying standard feature extraction format...');
-        
         const payload = {
             inputs: text,
             options: { 
@@ -185,7 +185,7 @@ async function textToVector(text) {
             }
         };
         
-        console.log('📤 Sending payload:', payload);
+        console.log('📤 Sending standard payload:', payload);
 
         const response = await fetch(`${CONFIG.hfApiUrl}${CONFIG.vectorModel}`, {
             method: 'POST',
@@ -196,101 +196,116 @@ async function textToVector(text) {
             body: JSON.stringify(payload)
         });
 
-        console.log('📡 Vector API response status:', response.status);
+        console.log('📡 Standard API response status:', response.status);
         
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Standard API worked! Result:', result);
+            return processVectorResult(result);
+        } else {
+            const errorText = await response.text();
+            console.log('❌ Standard API failed with status:', response.status);
+            console.log('❌ Error details:', errorText);
+            // Don't throw here - continue to alternative
+        }
+        
+    } catch (error) {
+        console.log('❌ Standard API threw exception:', error.message);
+        // Don't throw here - continue to alternative
+    }
+    
+    // Second attempt: Alternative API format with sentences parameter
+    console.log('🔄 Attempting alternative API format with sentences parameter...');
+    
+    try {
+        const alternativePayload = {
+            sentences: [text], // Use sentences parameter as error message suggests
+            options: { wait_for_model: true }
+        };
+        
+        console.log('📤 Sending alternative payload:', alternativePayload);
+        
+        const response = await fetch(`${CONFIG.hfApiUrl}${CONFIG.vectorModel}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${hfApiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(alternativePayload)
+        });
+
+        console.log('📡 Alternative API response status:', response.status);
+
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('❌ First API format failed:', errorText);
-            
-            // Try alternative format immediately
-            console.log('🔄 Trying alternative API format with sentences parameter...');
-            return await tryAlternativeVectorAPI(text);
+            console.error('❌ Alternative API also failed:', errorText);
+            throw new Error(`Both API formats failed. Last error: ${response.status} - ${errorText}`);
         }
 
         const result = await response.json();
-        console.log('📊 Standard API worked! Result:', result);
+        console.log('✅ Alternative API worked! Result:', result);
         return processVectorResult(result);
         
     } catch (error) {
-        console.error('❌ Error in standard API format:', error);
-        console.log('🔄 Trying alternative API format as fallback...');
-        
-        try {
-            return await tryAlternativeVectorAPI(text);
-        } catch (altError) {
-            console.error('❌ Both API formats failed');
-            throw new Error(`Vector API failed. Standard: ${error.message}, Alternative: ${altError.message}`);
-        }
+        console.error('❌ Alternative API threw exception:', error);
+        throw new Error(`Vector generation failed after trying both API formats: ${error.message}`);
     }
-}
-
-// Alternative API format with sentences parameter
-async function tryAlternativeVectorAPI(text) {
-    console.log('🔄 tryAlternativeVectorAPI called');
-    
-    const alternativePayload = {
-        sentences: [text], // Use sentences parameter as error message suggests
-        options: { wait_for_model: true }
-    };
-    
-    console.log('📤 Sending alternative payload:', alternativePayload);
-    
-    const response = await fetch(`${CONFIG.hfApiUrl}${CONFIG.vectorModel}`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${hfApiKey}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(alternativePayload)
-    });
-
-    console.log('📡 Alternative API response status:', response.status);
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Alternative API error:', errorText);
-        throw new Error(`Alternative API failed: ${response.status} - ${errorText}`);
-    }
-
-    const result = await response.json();
-    console.log('✅ Alternative API worked! Result:', result);
-    return processVectorResult(result);
 }
 
 // Process vector result regardless of API format
 function processVectorResult(result) {
-    console.log('📊 Processing vector result:', result);
+    console.log('📊 Processing vector result...');
     console.log('📊 Result type:', Array.isArray(result) ? 'Array' : typeof result);
-    console.log('📊 Result length:', Array.isArray(result) ? result.length : 'N/A');
+    console.log('📊 Result structure:', Array.isArray(result) ? `Array with ${result.length} elements` : 'Not an array');
+    
+    if (Array.isArray(result) && result.length > 0) {
+        console.log('📊 First element type:', Array.isArray(result[0]) ? 'Array' : typeof result[0]);
+        if (Array.isArray(result[0])) {
+            console.log('📊 First element length:', result[0].length);
+        }
+    }
     
     let finalVector;
     
     if (Array.isArray(result)) {
-        if (Array.isArray(result[0])) {
+        if (Array.isArray(result[0]) && result[0].length > 0) {
             // Nested array - take first embedding
             finalVector = result[0];
-            console.log('📊 Using first nested array');
-        } else {
-            // Flat array - this is the vector
+            console.log('📊 Using first nested array as vector');
+        } else if (typeof result[0] === 'number') {
+            // Flat array of numbers - this is the vector
             finalVector = result;
             console.log('📊 Using flat array as vector');
+        } else {
+            console.error('❌ Unexpected array structure:', result);
+            throw new Error('Vector result has unexpected array structure');
         }
     } else if (result.embeddings && Array.isArray(result.embeddings)) {
         finalVector = result.embeddings[0];
-        console.log('📊 Using first embedding from embeddings array');
+        console.log('📊 Using first embedding from embeddings property');
     } else {
-        throw new Error('Unexpected vector response format');
+        console.error('❌ Unexpected vector response format:', result);
+        throw new Error('Vector response has unexpected format');
     }
     
     console.log('✅ Final vector type:', Array.isArray(finalVector) ? 'Array' : typeof finalVector);
     console.log('📏 Final vector length:', Array.isArray(finalVector) ? finalVector.length : 'N/A');
     
     // Validate the vector
-    if (!Array.isArray(finalVector) || finalVector.length === 0) {
-        throw new Error('Invalid vector: not an array or empty');
+    if (!Array.isArray(finalVector)) {
+        throw new Error('Final vector is not an array');
     }
     
-    console.log('✅ Vector validation passed');
+    if (finalVector.length === 0) {
+        throw new Error('Final vector is empty');
+    }
+    
+    // Check if all elements are numbers
+    if (!finalVector.every(val => typeof val === 'number' && !isNaN(val))) {
+        throw new Error('Vector contains non-numeric values');
+    }
+    
+    console.log('✅ Vector validation passed - ready for similarity matching');
     return finalVector;
 }
 
