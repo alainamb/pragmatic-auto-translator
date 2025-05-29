@@ -33,11 +33,14 @@ let currentSourceLang = 'en';
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 Pragmatic Auto-Translator initializing...');
     setupLanguageToggle();
     setupTranslateButton();
     setupRatingSystem();
     await loadVectorData();
-    promptForApiKey();
+    
+    // Don't prompt immediately - wait for user to try translating
+    console.log('✅ Initialization complete');
 });
 
 // Setup language toggle functionality
@@ -99,19 +102,40 @@ Your token will be stored temporarily for this session only.`);
 
 // Load vector data from GitHub Pages
 async function loadVectorData() {
+    console.log('📊 Loading vector data from GitHub Pages...');
     showStatus('Loading corpus vector data...', 'loading');
     
     try {
+        const urls = [
+            `${CONFIG.vectorBaseUrl}gai-document-vectors.json`,
+            `${CONFIG.vectorBaseUrl}gai-paragraph-vectors.json`,
+            `${CONFIG.vectorBaseUrl}gai-section-vectors.json`
+        ];
+        
+        console.log('🌐 Fetching from URLs:', urls);
+        
         const [documentsRes, paragraphsRes, sectionsRes] = await Promise.all([
-            fetch(`${CONFIG.vectorBaseUrl}gai-document-vectors.json`),
-            fetch(`${CONFIG.vectorBaseUrl}gai-paragraph-vectors.json`),
-            fetch(`${CONFIG.vectorBaseUrl}gai-section-vectors.json`)
+            fetch(urls[0]),
+            fetch(urls[1]),
+            fetch(urls[2])
         ]);
+
+        console.log('📡 Response status:', {
+            documents: documentsRes.status,
+            paragraphs: paragraphsRes.status,
+            sections: sectionsRes.status
+        });
 
         // Parse JSON responses
         const documentsData = await documentsRes.json();
         const paragraphsData = await paragraphsRes.json();
         const sectionsData = await sectionsRes.json();
+
+        console.log('📋 Raw data structure:', {
+            documents: Object.keys(documentsData),
+            paragraphs: Object.keys(paragraphsData),
+            sections: Object.keys(sectionsData)
+        });
 
         // Extract vectors arrays from the nested structure
         vectorData = {
@@ -121,23 +145,34 @@ async function loadVectorData() {
         };
 
         const totalVectors = vectorData.documents.length + vectorData.paragraphs.length + vectorData.sections.length;
+        
+        console.log('✅ Vector data loaded successfully:', {
+            documents: vectorData.documents.length,
+            sections: vectorData.sections.length,
+            paragraphs: vectorData.paragraphs.length,
+            total: totalVectors
+        });
+        
         showStatus(`Loaded ${vectorData.documents.length} documents, ${vectorData.sections.length} sections, ${vectorData.paragraphs.length} paragraphs (Total: ${totalVectors} vectors)`, 'success');
         
         // Log sample for debugging
-        console.log('Sample vector data:', {
+        console.log('🔍 Sample vector data:', {
             documents: vectorData.documents[0],
             sections: vectorData.sections[0],
             paragraphs: vectorData.paragraphs[0]
         });
         
     } catch (error) {
-        console.error('Error loading vector data:', error);
+        console.error('❌ Error loading vector data:', error);
         showStatus('Failed to load corpus data. Translation may not work optimally.', 'error');
     }
 }
 
 // Convert text to vector using Hugging Face API
 async function textToVector(text) {
+    console.log('🧮 textToVector called with text length:', text.length);
+    console.log('🔗 Using model:', CONFIG.vectorModel);
+    
     try {
         const response = await fetch(`${CONFIG.hfApiUrl}${CONFIG.vectorModel}`, {
             method: 'POST',
@@ -151,24 +186,34 @@ async function textToVector(text) {
             })
         });
 
+        console.log('📡 Vector API response status:', response.status);
+        
         if (!response.ok) {
             const errorText = await response.text();
+            console.error('❌ Vector API error response:', errorText);
             throw new Error(`API request failed: ${response.status} - ${errorText}`);
         }
 
         const result = await response.json();
+        console.log('📊 Raw vector API result:', result);
         
         // Handle different response formats
+        let finalVector;
         if (Array.isArray(result) && result.length > 0) {
-            return result[0]; // First result is usually the vector
+            finalVector = result[0]; // First result is usually the vector
         } else if (result.embeddings) {
-            return result.embeddings[0];
+            finalVector = result.embeddings[0];
         } else {
-            return result;
+            finalVector = result;
         }
         
+        console.log('✅ Final vector type:', Array.isArray(finalVector) ? 'Array' : typeof finalVector);
+        console.log('📏 Final vector length:', Array.isArray(finalVector) ? finalVector.length : 'N/A');
+        
+        return finalVector;
+        
     } catch (error) {
-        console.error('Error generating vector:', error);
+        console.error('❌ Error in textToVector:', error);
         throw error;
     }
 }
@@ -270,25 +315,48 @@ async function translateWithHelsinki(text, context, sourceLang, targetLang) {
 
 // Main translation function
 async function performTranslation(sourceText) {
+    console.log('🔄 Starting translation process...');
+    console.log('📝 Source text:', sourceText);
+    console.log('🌍 Source language:', currentSourceLang);
+    
     translateButton.disabled = true;
     translateButton.textContent = 'Translating...';
     showStatus('Step 1: Converting text to vector...', 'loading');
     
     try {
+        // Check if API key exists
+        if (!hfApiKey) {
+            console.log('🔑 No API key found, prompting user...');
+            promptForApiKey();
+            if (!hfApiKey) {
+                throw new Error('API key required');
+            }
+        }
+        
+        console.log('🔑 API key available:', hfApiKey ? 'Yes' : 'No');
+        
         // Step 1: Convert input text to vector
+        console.log('🧮 Converting text to vector...');
         const inputVector = await textToVector(sourceText);
+        console.log('✅ Input vector generated:', inputVector ? 'Success' : 'Failed');
+        console.log('📊 Vector length:', Array.isArray(inputVector) ? inputVector.length : 'Not an array');
+        
         showStatus('Step 2: Finding similar content in corpus...', 'loading');
         
         // Step 2: Find similar content
+        console.log('🔍 Searching for similar content...');
         const similarContent = findSimilarContent(inputVector, 3);
-        
-        console.log('Found similar content:', similarContent);
+        console.log('📋 Similar content found:', similarContent.length, 'items');
+        console.log('🎯 Similarity scores:', similarContent.map(c => c.similarity));
         
         showStatus('Step 3: Translating with Helsinki model...', 'loading');
         
         // Step 3: Translate with Helsinki model
         const targetLang = currentSourceLang === 'en' ? 'es' : 'en';
         const targetLangName = currentSourceLang === 'en' ? 'Spanish' : 'English';
+        
+        console.log('🌍 Target language:', targetLang, '(' + targetLangName + ')');
+        console.log('🤖 Using translation model:', CONFIG.translationModels[`${currentSourceLang}-${targetLang}`]);
         
         const translation = await translateWithHelsinki(
             sourceText, 
@@ -297,12 +365,15 @@ async function performTranslation(sourceText) {
             targetLang
         );
 
+        console.log('✅ Translation received:', translation);
+
         // Display results
         displayTranslationResults(translation, similarContent, targetLangName);
         showStatus('Translation completed successfully!', 'success');
         
     } catch (error) {
-        console.error('Translation error:', error);
+        console.error('❌ Translation error:', error);
+        console.error('❌ Error stack:', error.stack);
         showStatus(`Translation failed: ${error.message}`, 'error');
         
         // Show fallback message
@@ -311,7 +382,8 @@ async function performTranslation(sourceText) {
                 <p><strong>Translation Error:</strong></p>
                 <p style="margin-top: 0.5rem; color: #dc2626;">${error.message}</p>
                 <p style="margin-top: 1rem; font-size: 0.875rem; color: #6b7280;">
-                    Please ensure you have a valid Hugging Face API token and try again.
+                    Please check the browser console for detailed error information.
+                    <br>Ensure you have a valid Hugging Face API token and try again.
                     <br>The model may also be loading - please wait a moment and retry.
                 </p>
             </div>
@@ -324,19 +396,30 @@ async function performTranslation(sourceText) {
 
 // Display translation results
 function displayTranslationResults(translation, similarContent, targetLangName) {
+    console.log('🎨 displayTranslationResults called:', {
+        translation,
+        similarContentCount: similarContent.length,
+        targetLangName
+    });
+    
     // Extract translation text from Helsinki model response
     let translationText = '';
     
     if (Array.isArray(translation) && translation.length > 0) {
         translationText = translation[0].translation_text || translation[0].generated_text || 'Translation not available';
+        console.log('📝 Extracted from array format:', translationText);
     } else if (translation.translation_text) {
         translationText = translation.translation_text;
+        console.log('📝 Extracted from .translation_text:', translationText);
     } else if (translation.generated_text) {
         translationText = translation.generated_text;
+        console.log('📝 Extracted from .generated_text:', translationText);
     } else {
         translationText = 'Translation format not recognized';
-        console.log('Unexpected translation format:', translation);
+        console.error('❌ Unexpected translation format:', translation);
     }
+
+    console.log('✅ Final translation text:', translationText);
 
     translationOutput.innerHTML = `
         <div style="border: 2px solid var(--primary-green); border-radius: 8px; padding: 1rem; background-color: #f0fdf4;">
@@ -350,6 +433,8 @@ function displayTranslationResults(translation, similarContent, targetLangName) 
     // Show context info
     contextInfo.classList.remove('hidden');
     if (similarContent.length > 0) {
+        console.log('📋 Displaying context for', similarContent.length, 'similar items');
+        
         const contextHtml = similarContent.map((item, i) => {
             const preview = item.content.substring(0, 150);
             const titleInfo = item.title ? ` - "${item.title}"` : '';
@@ -369,11 +454,14 @@ function displayTranslationResults(translation, similarContent, targetLangName) 
             </div>
         `;
     } else {
+        console.log('⚠️ No similar content found');
         document.getElementById('contextDetails').innerHTML = `
             <strong>No similar context found in corpus.</strong><br>
             <span style="color: #6b7280;">Translation performed without domain-specific context.</span>
         `;
     }
+    
+    console.log('✅ Translation display completed');
 }
 
 // Status indicator helper
