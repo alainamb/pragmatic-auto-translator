@@ -11,11 +11,16 @@ async function loadCorpusSources() {
     const spanishSection = document.getElementById('spanishCorpus');
 
     try {
+        console.log('Attempting to load corpus data...');
+        
         // Load both corpus databases
         const [englishData, spanishData] = await Promise.all([
-            fetchCorpusData('../corpora/gai/eng/gai-eng_database.json'),
-            fetchCorpusData('../corpora/gai/esp/gai-esp_database.json')
+            fetchCorpusData('data/gai-eng_database.json'),
+            fetchCorpusData('data/gai-esp_database.json')
         ]);
+        
+        console.log('English data loaded:', englishData);
+        console.log('Spanish data loaded:', spanishData);
 
         // Hide loading indicator
         loadingIndicator.classList.add('hidden');
