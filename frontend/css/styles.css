@@ -507,7 +507,93 @@ ul {
     }
 }
 
-/* Reference page styles */
+/* Corpus Page Styles */
+.corpus-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.corpus-card {
+    background-color: white;
+    border: 1px solid var(--gray-300);
+    border-radius: 0.5rem;
+    padding: 1.25rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s ease;
+}
+
+.corpus-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.corpus-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    gap: 1rem;
+}
+
+.corpus-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--gray-800);
+    line-height: 1.3;
+    margin: 0;
+    flex-grow: 1;
+}
+
+.corpus-language {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--primary-blue);
+    background-color: rgba(37, 99, 235, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.corpus-authors,
+.corpus-publication,
+.corpus-type,
+.corpus-topics {
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: var(--gray-600);
+}
+
+.corpus-authors strong,
+.corpus-publication strong,
+.corpus-type strong,
+.corpus-topics strong {
+    color: var(--gray-700);
+    font-weight: 600;
+}
+
+.corpus-topics {
+    margin-bottom: 0;
+}
+
+/* Mobile responsiveness for corpus cards */
+@media (max-width: 768px) {
+    .corpus-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .corpus-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .corpus-language {
+        align-self: flex-start;
+    }
+}
 
 /* Footer */
 .footer {
