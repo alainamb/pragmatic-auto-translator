@@ -282,18 +282,31 @@ h3{
     margin-bottom: 1rem;
 }
 
-table, th, td {
+/* Table styling - comprehensive alignment fix */
+table {
     border: 1px solid var(--gray-300);
     border-collapse: collapse;
-    border-spacing: 1rem;
-    padding: 10px;
     margin-top: 10px;
     margin-bottom: 10px;
-   }
+    width: 100%;
+}
 
-td {
+th, td {
+    border: 1px solid var(--gray-300);
+    padding: 15px 20px;
     vertical-align: top;
-    padding-left: 20px"
+    text-align: left;
+}
+
+/* Ensure consistent line-height and remove any baseline alignment issues */
+td {
+    line-height: 1.5;
+}
+
+/* Make sure strong elements don't affect vertical alignment */
+td strong {
+    display: inline-block;
+    vertical-align: top;
 }
 
 .spex-grid {
@@ -593,6 +606,66 @@ ul {
     .corpus-language {
         align-self: flex-start;
     }
+}
+
+/* Improved text spacing for better readability */
+
+/* Base text styling with better line height */
+body {
+    background-color: var(--gray-100);
+    min-height: 100vh;
+    font-family: Arial, sans-serif;
+    line-height: 1.6; /* Increased from default for better readability */
+}
+
+/* Paragraph spacing */
+p {
+    line-height: 1.7; /* Comfortable line spacing */
+    margin-bottom: 1.25rem; /* Increased space between paragraphs */
+}
+
+/* Adjust heading spacing */
+h2 {
+    font-size: x-large;
+    padding-bottom: 10px;
+    margin-top: 2rem; /* More space before headings */
+    margin-bottom: 1rem; /* Space after headings */
+    line-height: 1.3;
+}
+
+/* Remove excessive top margin from first heading in sections */
+.section-card h2:first-child {
+    margin-top: 0;
+}
+
+h3 {
+    font-size: large;
+    padding-bottom: 10px;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.4;
+}
+
+/* List spacing */
+ul, ol {
+    margin-left: 0;
+    padding-left: 20px;
+    margin-bottom: 1.25rem; /* Match paragraph spacing */
+}
+
+li {
+    margin-bottom: 0.5rem; /* Space between list items */
+    line-height: 1.6;
+}
+
+/* Section card content spacing */
+.section-card {
+    margin-top: 2rem;
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    padding: 2rem; /* Increased padding for more breathing room */
+    line-height: 1.6;
 }
 
 /* Footer */
