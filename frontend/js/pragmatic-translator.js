@@ -1,10 +1,10 @@
 // Configuration
 const CONFIG = {
-    // GitHub Pages URLs for your vector files
+    // GitHub Pages URLs for the vector files
     vectorBaseUrl: 'https://alainamb.github.io/pragmatic-auto-translator/vectors/gai/',
     // Hugging Face API configuration
     hfApiUrl: 'https://api-inference.huggingface.co/models/',
-    // Use a different model that's configured for feature extraction
+    // A different model that's configured for feature extraction
     vectorModel: 'sentence-transformers/all-MiniLM-L6-v2', // This one works better for embeddings
     // Helsinki translation models (bidirectional)
     translationModels: {

@@ -49,9 +49,6 @@ corpora/gai/esp/in-progress/
 # Backups
 backups/
 
-# Visualizations (workshop generated files)
-visualizations/
-
 # Large temporary files
 *.tmp
 *.temp

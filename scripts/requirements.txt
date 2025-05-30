@@ -1,28 +1,54 @@
-# Python dependencies for Day 3: Vector Creation
+# Python dependencies for Corpus-Informed Translation Workshop
 # Install these with: pip install -r scripts/requirements.txt
 
+# CORE MACHINE LEARNING LIBRARIES
+# ====================================
 # Main library for creating text embeddings/vectors
-# Using latest compatible version for Python 3.12
+# Version 2.7.0+ supports distiluse-base-multilingual-cased-v2 model
 sentence-transformers>=2.7.0
 
-# For basic data manipulation and file handling
-# Let pip choose compatible version
-numpy>=1.24.0
+# Torch backend (more reliable than TensorFlow for sentence-transformers)
+# This helps avoid TensorFlow warnings and ensures consistent behavior
+torch>=2.0.0
+torchvision>=0.15.0
 
+# For basic data manipulation and file handling
+numpy>=1.24.0,<2.0.0
+
+# Machine learning utilities (PCA, cosine similarity, etc.)
+scikit-learn>=1.2.0
+
+# WORKSHOP UTILITIES
+# ====================================
 # For progress bars during processing
 tqdm>=4.65.0
 
 # To be able to create and run Jupyter notebooks
 jupyter>=1.0.0
 
-# For interactive elements
+# For interactive elements in notebooks
 ipywidgets>=7.0.0
 
-# Additional packages for your current notebook
+# DATA PROCESSING
+# ====================================
+# Data manipulation and analysis
 pandas>=1.5.0
+
+# VISUALIZATION LIBRARIES
+# ====================================
+# Basic plotting
 matplotlib>=3.6.0
+
+# Statistical visualization
 seaborn>=0.11.0
-scikit-learn>=1.2.0
+
+# Interactive plots (for exploring vectors)
 plotly>=5.0.0
 
-# JSON handling is built into Python - no installation needed
+# OPTIONAL PERFORMANCE BOOSTERS
+# ====================================
+# Faster JSON processing (optional but recommended)
+ujson>=5.0.0
+
+# Note: JSON handling is built into Python - no installation needed
+# Note: The distiluse-base-multilingual-cased-v2 model (~500MB) will download automatically on first use

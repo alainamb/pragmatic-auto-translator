@@ -29,7 +29,7 @@ VECTORS_DIR = f'{BASE_DIR}/vectors/{DOMAIN}'    # Where to save generated vector
 
 # Cross-lingual model for creating embeddings
 # This model can handle both English and Spanish text in the same vector space
-MODEL_NAME = 'paraphrase-multilingual-MiniLM-L12-v2'
+MODEL_NAME = 'distiluse-base-multilingual-cased-v2'
 
 # Maximum text length for processing (in characters)
 # Longer texts will be truncated to prevent memory issues
@@ -49,12 +49,12 @@ CREATE_PARAGRAPH_VECTORS = True   # Paragraph-level vectors
 # ==============================================================================
 
 # Names for the generated vector files
-DOCUMENT_VECTORS_FILE = 'document_vectors.json'
-SECTION_VECTORS_FILE = 'section_vectors.json'
-PARAGRAPH_VECTORS_FILE = 'paragraph_vectors.json'
+DOCUMENT_VECTORS_FILE = 'gai-document-vectors.json'
+SECTION_VECTORS_FILE = 'gai-section-vectors.json'
+PARAGRAPH_VECTORS_FILE = 'gai-paragraph-vectors.json'
 
 # Combined JavaScript file for web visualization
-VECTOR_DATA_JS_FILE = 'vector_data.js'
+VECTOR_DATA_JS_FILE = 'gai-vector-data.js'
 
 # ==============================================================================
 # PROCESSING SETTINGS
