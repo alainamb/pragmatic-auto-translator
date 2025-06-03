@@ -52,17 +52,17 @@ export const CORPUS = {
   // Domain currently implemented
   DOMAIN: 'gai', // Generative AI
   
-  // Vector file paths (relative to project root)
+  // Vector file paths (absolute for GitHub pages)
   VECTOR_PATHS: {
-    document: './vectors/gai/gai-document-vectors.json',
-    section: './vectors/gai/gai-section-vectors.json', 
-    paragraph: './vectors/gai/gai-paragraph-vectors.json'
+    document: '/pragmatic-auto-translator/vectors/gai/gai-document-vectors.json',
+    section: '/pragmatic-auto-translator/vectors/gai/gai-section-vectors.json', 
+    paragraph: '/pragmatic-auto-translator/vectors/gai/gai-paragraph-vectors.json'
   },
   
-  // Database paths (for context info)
+  // Database paths (for context info - absolute for GitHub pages)
   DATABASE_PATHS: {
-    en: './corpora/gai/eng/gai-eng_database.json',
-    es: './corpora/gai/esp/gai-esp_database.json'
+    en: '/pragmatic-auto-translator/corpora/gai/eng/gai-eng_database.json',
+    es: '/pragmatic-auto-translator/corpora/gai/esp/gai-esp_database.json'
   }
 };
 
