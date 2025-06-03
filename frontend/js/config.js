@@ -6,10 +6,9 @@
 export const MODELS = {
   // Embedding model (matches your vector generation)
   EMBEDDING: {
-    name: 'distiluse-base-multilingual-cased-v2',
-    dimension: 512,
-    // Transformers.js model identifier
-    transformersId: 'sentence-transformers/distiluse-base-multilingual-cased-v2'
+    name: 'jina-embeddings-v3',
+    dimension: 1024,
+    transformersId: 'jinaai/jina-embeddings-v3'
   },
   
   // Translation models
@@ -46,29 +45,6 @@ export const TRANSLATION_APIS = {
       es: 'es'
     }
   },
-};
-
-// Custom Embedding API Configuration
-export const EMBEDDING_APIS = {
-  // Primary: Your custom FastAPI server
-  CUSTOM: {
-    url: 'https://d7e5-34-106-184-228.ngrok-free.app/embed', // Change this to your deployed URL
-    healthUrl: 'https://d7e5-34-106-184-228.ngrok-free.app/health',
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  },
-  
-  // Fallback: HF Serverless (if we want to try again)
-  // HUGGINGFACE: {
-  // url: 'https://api-inference.huggingface.co/models/',
-  //  method: 'POST',
-  //  headers: {
-  //    'Content-Type': 'application/json'
-  //  }
-  //}
-
 };
 
 // Corpus Configuration
@@ -180,7 +156,6 @@ export const ERRORS = {
 export default {
   MODELS,
   TRANSLATION_APIS,
-  EMBEDDING_APIS,
   CORPUS,
   SIMILARITY,
   UI,
