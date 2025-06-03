@@ -47,11 +47,7 @@ export const TRANSLATION_APIS = {
   },
 };
 
-// Corpus Configuration
-// =====================================
-// DYNAMIC PATH CONFIGURATION
-// =====================================
-
+// Corpus Configuration - Dynamic Path Configuration
 // Detect environment and set base path
 const isGitHubPages = window.location.hostname.includes('github.io');
 const basePath = isGitHubPages ? '/pragmatic-auto-translator' : '.';
