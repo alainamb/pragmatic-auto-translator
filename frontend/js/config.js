@@ -48,21 +48,30 @@ export const TRANSLATION_APIS = {
 };
 
 // Corpus Configuration
+// =====================================
+// DYNAMIC PATH CONFIGURATION
+// =====================================
+
+// Detect environment and set base path
+const isGitHubPages = window.location.hostname.includes('github.io');
+const basePath = isGitHubPages ? '/pragmatic-auto-translator' : '.';
+
+// Corpus Configuration  
 export const CORPUS = {
   // Domain currently implemented
   DOMAIN: 'gai', // Generative AI
   
-  // Vector file paths (absolute for GitHub pages)
+  // Vector file paths (dynamic for both environments)
   VECTOR_PATHS: {
-    document: '/pragmatic-auto-translator/vectors/gai/gai-document-vectors.json',
-    section: '/pragmatic-auto-translator/vectors/gai/gai-section-vectors.json', 
-    paragraph: '/pragmatic-auto-translator/vectors/gai/gai-paragraph-vectors.json'
+    document: `${basePath}/vectors/gai/gai-document-vectors.json`,
+    section: `${basePath}/vectors/gai/gai-section-vectors.json`, 
+    paragraph: `${basePath}/vectors/gai/gai-paragraph-vectors.json`
   },
   
-  // Database paths (for context info - absolute for GitHub pages)
+  // Database paths (dynamic for both environments)
   DATABASE_PATHS: {
-    en: '/pragmatic-auto-translator/corpora/gai/eng/gai-eng_database.json',
-    es: '/pragmatic-auto-translator/corpora/gai/esp/gai-esp_database.json'
+    en: `${basePath}/corpora/gai/eng/gai-eng_database.json`,
+    es: `${basePath}/corpora/gai/esp/gai-esp_database.json`
   }
 };
 
