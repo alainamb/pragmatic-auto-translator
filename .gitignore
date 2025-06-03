@@ -30,6 +30,8 @@ MANIFEST
 # Environment variables
 .env
 .venv
+.env.local
+*.key
 env/
 venv/
 ENV/
@@ -38,6 +40,15 @@ venv.bak/
 
 # API Configuration (contains sensitive API keys)
 frontend/js/api-config.js
+frontend/js/dev-config.js
+
+# Node.js dependencies (future-proofing)
+node_modules/
+package-lock.json
+yarn.lock
+
+# GitHub Actions artifacts
+.github/workflows/artifacts/
 
 # Project-specific ignores
 # Corpus processing folders
@@ -52,6 +63,8 @@ backups/
 # Large temporary files
 *.tmp
 *.temp
+*.cache
+.cache/
 
 # OS generated files
 .DS_Store

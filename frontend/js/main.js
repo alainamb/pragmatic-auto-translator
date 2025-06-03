@@ -10,9 +10,10 @@ import {
   createUserInputEmbedding, 
   isEmbeddingModelReady,
   getEmbeddingModelStatus,
-  testEmbeddingModel,
-  setCustomAPIUrl 
-} from './embedding-custom.js';
+  setJinaApiKey,
+  storeApiKeyLocally, 
+  getApiKeyStatus
+} from './embedding-jina.js';
 
 // =====================================
 // GLOBAL VARIABLES (matching your existing structure)
@@ -368,21 +369,26 @@ window.submitFeedback = submitFeedback;
 // Add embedding test function for debugging
 window.testEmbedding = async function() {
     try {
-        showStatus('Testing custom embedding API...', 'loading');
-        const results = await testEmbeddingModel();
-        showStatus('Custom embedding API test completed successfully', 'success');
-        console.log('Custom embedding test results:', results);
-        return results;
+        showStatus('Testing JINA API...', 'loading');
+        const status = await getEmbeddingModelStatus();
+        showStatus('JINA API test completed', 'success');
+        console.log('JINA API status:', status);
+        return status;
     } catch (error) {
-        showStatus('Custom embedding API test failed', 'error');
-        console.error('Custom embedding test error:', error);
+        showStatus('JINA API test failed', 'error');
+        console.error('JINA API test error:', error);
     }
 };
 
 // Add function to update API URL for production deployment
-window.setEmbeddingURL = function(url) {
-    setCustomAPIUrl(url);
-    showStatus(`Updated embedding API URL to: ${url}`, 'success');
+window.setJinaApiKey = function(apiKey) {
+    setJinaApiKey(apiKey);
+    showStatus(`JINA API key set successfully`, 'success');
+};
+
+window.storeJinaKey = function(apiKey) {
+    storeApiKeyLocally(apiKey);
+    showStatus(`JINA API key stored locally`, 'success');
 };
 
 // Make key functions available globally for debugging
@@ -394,11 +400,12 @@ if (config.DEV.DEBUG) {
         showStatus,
         loadCorpusData,
         submitFeedback,
-        // Custom embedding functions
+        // JINA embedding functions (UPDATED)
         embeddingStatus: getEmbeddingModelStatus,
         testEmbedding: window.testEmbedding,
         loadEmbeddingModel: loadEmbeddingModel,
-        setEmbeddingURL: window.setEmbeddingURL
+        setJinaApiKey: window.setJinaApiKey,
+        storeJinaKey: window.storeJinaKey
     };
     debugLog('Debug helpers attached to window.PragmaticTranslator', 'info');
 }
