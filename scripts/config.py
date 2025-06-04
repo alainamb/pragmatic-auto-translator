@@ -1,81 +1,227 @@
-# config.py
-# Configuration file for the Auto-Translator Vectorization System
-# This file contains all the settings and paths used by create_vectors.py
+# ==============================================================================
+# UNIVERSAL CONFIG - WORKS IN BOTH COLAB AND LOCAL ENVIRONMENTS
+# Matches UNAM Auto-Traductor project structure
+# ==============================================================================
+
+import os
+import sys
+from pathlib import Path
+
+# ==============================================================================
+# ENVIRONMENT DETECTION
+# ==============================================================================
+
+def detect_environment():
+    """Auto-detect if running in Colab or local environment"""
+    try:
+        import google.colab
+        return 'colab'
+    except ImportError:
+        return 'local'
+
+ENVIRONMENT = detect_environment()
+print(f"🌍 Environment detected: {ENVIRONMENT.upper()}")
+
+# ==============================================================================
+# ENVIRONMENT-SPECIFIC SETUP
+# ==============================================================================
+
+if ENVIRONMENT == 'colab':
+    # Colab-specific setup
+    print("🔗 Setting up Google Colab environment...")
+    
+    # Mount Google Drive
+    try:
+        from google.colab import drive
+        drive.mount('/content/drive')
+        print("✅ Google Drive mounted")
+        
+        # Use your existing project structure
+        BASE_DIR = '/content/drive/MyDrive/Classroom/Auto-Traductor - UNAM-SMA/Proyectos/pragmatic-auto-translator'
+        
+        # Create new directories (scripts and vectors)
+        Path(f"{BASE_DIR}/scripts").mkdir(parents=True, exist_ok=True)
+        Path(f"{BASE_DIR}/vectors").mkdir(parents=True, exist_ok=True)
+        Path(f"{BASE_DIR}/vectors/gai").mkdir(parents=True, exist_ok=True)
+        
+        print(f"📁 Using project structure: {BASE_DIR}")
+        
+    except Exception as e:
+        print(f"❌ Drive mount failed: {e}")
+        # Fallback to simpler structure
+        BASE_DIR = '/content'
+        
+else:
+    # Local environment setup
+    print("💻 Setting up local environment...")
+    BASE_DIR = '..'  # Go up one level from scripts/ folder
 
 # ==============================================================================
 # DOMAIN AND LANGUAGE SETTINGS
 # ==============================================================================
 
-# Domain to process (change this to work with different subject areas)
-# Options: 'gai', 'climate', 'immigration', etc.
 DOMAIN = 'gai'
-
-# Languages to process in this domain
-# The script will look for folders with these names under your domain
 LANGUAGES = ['eng', 'esp']
 
 # ==============================================================================
-# FILE PATHS AND FOLDER STRUCTURE
+# PATH CONFIGURATION (Using your existing structure)
 # ==============================================================================
 
-# Base directory structure (relative to where you run the script)
-BASE_DIR = '..'  # Go up one level from scripts/ folder
-CORPORA_DIR = f'{BASE_DIR}/corpora/{DOMAIN}'    # Where your JSON files are stored
-VECTORS_DIR = f'{BASE_DIR}/vectors/{DOMAIN}'    # Where to save generated vectors
+CORPORA_DIR = f'{BASE_DIR}/corpora/{DOMAIN}'
+VECTORS_DIR = f'{BASE_DIR}/vectors/{DOMAIN}'
+
+# Ensure vectors directory exists
+Path(VECTORS_DIR).mkdir(parents=True, exist_ok=True)
 
 # ==============================================================================
-# VECTORIZATION MODEL SETTINGS
+# MODEL SETTINGS
 # ==============================================================================
 
-# Cross-lingual model for creating embeddings
-# This model can handle both English and Spanish text in the same vector space
-MODEL_NAME = 'distiluse-base-multilingual-cased-v2'
-
-# Maximum text length for processing (in characters)
-# Longer texts will be truncated to prevent memory issues
+MODEL_NAME = 'jinaai/jina-embeddings-v3'
+MODEL_TRUST_REMOTE_CODE = True
+MODEL_TASK = 'retrieval.passage'
+MODEL_DIMENSIONS = 1024
 MAX_TEXT_LENGTH = 8000
 
 # ==============================================================================
-# VECTOR GRANULARITY SETTINGS
+# VECTOR SETTINGS
 # ==============================================================================
 
-# Which types of vectors to create (set to False to skip)
-CREATE_DOCUMENT_VECTORS = True    # Whole document vectors
-CREATE_SECTION_VECTORS = True     # Section-level vectors  
-CREATE_PARAGRAPH_VECTORS = True   # Paragraph-level vectors
+CREATE_DOCUMENT_VECTORS = True
+CREATE_SECTION_VECTORS = True
+CREATE_PARAGRAPH_VECTORS = True
 
 # ==============================================================================
-# OUTPUT FILE SETTINGS
+# OUTPUT FILES
 # ==============================================================================
 
-# Names for the generated vector files
 DOCUMENT_VECTORS_FILE = 'gai-document-vectors.json'
 SECTION_VECTORS_FILE = 'gai-section-vectors.json'
 PARAGRAPH_VECTORS_FILE = 'gai-paragraph-vectors.json'
-
-# Combined JavaScript file for web visualization
 VECTOR_DATA_JS_FILE = 'gai-vector-data.js'
 
 # ==============================================================================
 # PROCESSING SETTINGS
 # ==============================================================================
 
-# Show progress bars during processing
 SHOW_PROGRESS = True
-
-# Print detailed information during processing
 VERBOSE = True
-
-# Maximum number of documents to process (useful for testing)
-# Set to None to process all documents
-MAX_DOCUMENTS = None  # Change to 3 for testing with just 3 documents
+MAX_DOCUMENTS = None
 
 # ==============================================================================
-# STUDENT CUSTOMIZATION SECTION
+# ENVIRONMENT-SPECIFIC UTILITIES
 # ==============================================================================
 
-# Instructions:
-# 1. Change DOMAIN to match your chosen subject area
-# 2. Update LANGUAGES if you're working with different language pairs
-# 3. Adjust MAX_DOCUMENTS to a small number (like 3) when testing
-# 4. Set any of the CREATE_*_VECTORS to False if you want to skip that level
+def show_project_structure():
+    """Display the current project structure"""
+    print("\n📂 PROJECT STRUCTURE:")
+    print("="*60)
+    if ENVIRONMENT == 'colab':
+        structure = f"""
+{BASE_DIR}/
+├── corpora/
+│   └── gai/
+│       ├── eng/
+│       │   ├── submissions/
+│       │   ├── processed/
+│       │   └── gai-eng_database.json ✅
+│       └── esp/
+│           ├── submissions/
+│           ├── processed/
+│           └── gai-esp_database.json ✅
+├── scripts/                    📝 (notebooks go here)
+│   └── create_vectors_single.ipynb
+└── vectors/                    🎯 (generated files)
+    └── gai/
+        ├── gai-document-vectors.json
+        ├── gai-section-vectors.json
+        ├── gai-paragraph-vectors.json
+        └── gai-vector-data.js
+        """
+    else:
+        structure = f"""
+{BASE_DIR}/
+├── scripts/                    📝 (you are here)
+│   ├── config.py
+│   ├── requirements.txt
+│   └── create_vectors_single.ipynb
+├── corpora/
+│   └── gai/ (your corpus files)
+└── vectors/
+    └── gai/ (generated files)
+        """
+    print(structure)
+    print("="*60)
+
+def download_vectors():
+    """Colab helper: Download generated vector files"""
+    if ENVIRONMENT == 'colab':
+        from google.colab import files
+        
+        vector_files = [
+            f"{VECTORS_DIR}/{DOCUMENT_VECTORS_FILE}",
+            f"{VECTORS_DIR}/{SECTION_VECTORS_FILE}",
+            f"{VECTORS_DIR}/{PARAGRAPH_VECTORS_FILE}",
+            f"{VECTORS_DIR}/{VECTOR_DATA_JS_FILE}"
+        ]
+        
+        print("📥 Downloading vector files for local use...")
+        downloaded_count = 0
+        for file_path in vector_files:
+            if Path(file_path).exists():
+                files.download(file_path)
+                print(f"   ✅ Downloaded: {Path(file_path).name}")
+                downloaded_count += 1
+            else:
+                print(f"   ⚠️ Not found: {Path(file_path).name}")
+        
+        print(f"\n📊 Downloaded {downloaded_count} vector files")
+        print("💡 Upload these to your local project's vectors/gai/ folder")
+        
+    else:
+        print("ℹ️ Files saved locally - no download needed")
+
+# ==============================================================================
+# VERIFY STRUCTURE
+# ==============================================================================
+
+def verify_corpus_files():
+    """Check that corpus files exist"""
+    print("\n🔍 VERIFYING CORPUS FILES:")
+    print("-" * 40)
+    
+    all_good = True
+    for language in LANGUAGES:
+        db_file = f"{CORPORA_DIR}/{language}/{DOMAIN}-{language}_database.json"
+        if Path(db_file).exists():
+            print(f"✅ {language.upper()}: {db_file}")
+        else:
+            print(f"❌ {language.upper()}: Missing {db_file}")
+            all_good = False
+    
+    return all_good
+
+# ==============================================================================
+# DISPLAY CONFIGURATION
+# ==============================================================================
+
+print("\n" + "="*60)
+print("🔧 UNAM AUTO-TRADUCTOR CONFIGURATION")
+print("="*60)
+print(f"Environment: {ENVIRONMENT}")
+print(f"Domain: {DOMAIN}")
+print(f"Languages: {', '.join(LANGUAGES)}")
+print(f"Model: {MODEL_NAME}")
+print(f"Dimensions: {MODEL_DIMENSIONS}")
+print(f"Corpora directory: {CORPORA_DIR}")
+print(f"Vectors directory: {VECTORS_DIR}")
+
+# Auto-verify corpus files
+corpus_ready = verify_corpus_files()
+
+if corpus_ready:
+    print(f"\n✅ All corpus files found - ready for vectorization!")
+else:
+    print(f"\n⚠️ Some corpus files missing - check file paths")
+
+print("="*60)

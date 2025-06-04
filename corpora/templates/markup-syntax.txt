@@ -8,3 +8,4 @@ Use the following markup syntax to indicate the WYS (what you see) formatting el
 
 ^Superscript^
 
+Here is a good reference on markup syntax: https://www.markdownguide.org/basic-syntax/

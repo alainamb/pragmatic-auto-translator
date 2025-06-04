@@ -4,11 +4,10 @@
 
 // Model Configuration
 export const MODELS = {
-  // Embedding model (matches your vector generation)
   EMBEDDING: {
-    name: 'distiluse-base-multilingual-cased-v2',
-    dimension: 512,
-    transformersId: 'sentence-transformers/distiluse-base-multilingual-cased-v2'
+    name: 'jina-embeddings-v3',
+    dimension: 1024,
+    transformersId: 'jinaai/jina-embeddings-v3'
   },
   
   // Translation models
