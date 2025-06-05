@@ -320,15 +320,168 @@ export function isValidInput(text) {
 }
 
 /**
- * Validate vector data structure matches expected schema
+ * Check if a model name is compatible with jina-embeddings-v3
+ * @param {string} modelName - Model name from vector metadata
+ * @returns {boolean} True if compatible
+ */
+function isJinaV3Compatible(modelName) {
+  // Accept various forms of the model name that match your config
+  const compatibleNames = [
+    config.MODELS.EMBEDDING.name,           // 'jina-embeddings-v3'
+    config.MODELS.EMBEDDING.transformersId, // 'jinaai/jina-embeddings-v3'
+    'jinaai/jina-embeddings-v3',
+    'jina-embeddings-v3',
+    'jinaai/jina-embeddings-v3.0'
+  ];
+  
+  return compatibleNames.some(name => 
+    modelName === name || 
+    modelName.includes('jina-embeddings-v3')
+  );
+}
+
+/**
+ * Validate vector data structure matches expected schema - UPDATED for flexible validation
  * @param {Object} vectorData - Vector data object
  * @returns {boolean} True if valid structure
  */
 export function isValidVectorData(vectorData) {
-  return vectorData &&
-         vectorData.metadata &&
-         vectorData.vectors &&
-         Array.isArray(vectorData.vectors) &&
-         vectorData.metadata.model === config.MODELS.EMBEDDING.name &&
-         vectorData.metadata.dimension === config.MODELS.EMBEDDING.dimension;
+  // Basic structure validation
+  if (!vectorData) {
+    debugLog('Vector data is null or undefined', 'error');
+    return false;
+  }
+  
+  if (!vectorData.metadata) {
+    debugLog('Vector data missing metadata', 'error');
+    return false;
+  }
+  
+  if (!vectorData.vectors) {
+    debugLog('Vector data missing vectors array', 'error');
+    return false;
+  }
+  
+  if (!Array.isArray(vectorData.vectors)) {
+    debugLog('Vector data vectors is not an array', 'error');
+    return false;
+  }
+  
+  // Model validation - more flexible for jina-embeddings-v3
+  if (!vectorData.metadata.model) {
+    debugLog('Vector metadata missing model field', 'error');
+    return false;
+  }
+  
+  if (!isJinaV3Compatible(vectorData.metadata.model)) {
+    debugLog(`Vector model "${vectorData.metadata.model}" is not compatible with jina-embeddings-v3`, 'error');
+    debugLog(`Expected model containing "jina-embeddings-v3", got: ${vectorData.metadata.model}`, 'warn');
+    return false;
+  }
+  
+  // Dimension validation - check for 1024D
+  if (!vectorData.metadata.dimension) {
+    debugLog('Vector metadata missing dimension field', 'error');
+    return false;
+  }
+  
+  const expectedDimension = config.MODELS.EMBEDDING.dimension;
+  if (vectorData.metadata.dimension !== expectedDimension) {
+    debugLog(`Vector dimension mismatch. Expected: ${expectedDimension}, got: ${vectorData.metadata.dimension}`, 'error');
+    return false;
+  }
+  
+  // Validate that vectors actually have the right dimension
+  if (vectorData.vectors.length > 0) {
+    const firstVector = vectorData.vectors[0];
+    if (firstVector.vector && Array.isArray(firstVector.vector)) {
+      if (firstVector.vector.length !== expectedDimension) {
+        debugLog(`First vector has wrong dimension. Expected: ${expectedDimension}, got: ${firstVector.vector.length}`, 'error');
+        return false;
+      }
+    } else {
+      debugLog('First vector missing or invalid vector array', 'error');
+      return false;
+    }
+  }
+  
+  debugLog(`Vector data validation passed: ${vectorData.vectors.length} vectors, model: ${vectorData.metadata.model}, dimension: ${vectorData.metadata.dimension}`, 'info');
+  return true;
+}
+
+/**
+ * Enhanced validation with detailed error reporting
+ * @param {Object} vectorData - Vector data object
+ * @param {string} filePath - File path for error reporting
+ * @returns {Object} Validation result with detailed messages
+ */
+export function validateVectorDataDetailed(vectorData, filePath = 'unknown') {
+  const result = {
+    isValid: false,
+    errors: [],
+    warnings: [],
+    metadata: null
+  };
+
+  if (!vectorData) {
+    result.errors.push('Vector data is null or undefined');
+    return result;
+  }
+
+  if (!vectorData.metadata) {
+    result.errors.push('Missing metadata object');
+    return result;
+  }
+
+  if (!vectorData.vectors || !Array.isArray(vectorData.vectors)) {
+    result.errors.push('Missing or invalid vectors array');
+    return result;
+  }
+
+  result.metadata = vectorData.metadata;
+
+  // Model validation - more flexible for jina-embeddings-v3
+  if (!vectorData.metadata.model) {
+    result.errors.push('Missing model field in metadata');
+  } else if (!isJinaV3Compatible(vectorData.metadata.model)) {
+    result.errors.push(`Incompatible model: ${vectorData.metadata.model} (expected jina-embeddings-v3 variant)`);
+    // Show what we're comparing against for debugging
+    debugLog(`Config model name: ${config.MODELS.EMBEDDING.name}`, 'info');
+    debugLog(`Config transformers ID: ${config.MODELS.EMBEDDING.transformersId}`, 'info');
+    debugLog(`Vector file model: ${vectorData.metadata.model}`, 'info');
+  }
+
+  // Dimension validation
+  const expectedDimension = config.MODELS.EMBEDDING.dimension;
+  if (!vectorData.metadata.dimension) {
+    result.errors.push('Missing dimension field in metadata');
+  } else if (vectorData.metadata.dimension !== expectedDimension) {
+    result.errors.push(`Dimension mismatch: expected ${expectedDimension}, got ${vectorData.metadata.dimension}`);
+    debugLog(`Config dimension: ${expectedDimension}`, 'info');
+    debugLog(`Vector file dimension: ${vectorData.metadata.dimension}`, 'info');
+  }
+
+  // Vector content validation
+  if (vectorData.vectors.length === 0) {
+    result.warnings.push('No vectors found in file');
+  } else {
+    const sampleVector = vectorData.vectors[0];
+    if (!sampleVector.vector || !Array.isArray(sampleVector.vector)) {
+      result.errors.push('First vector missing or invalid vector array');
+    } else if (sampleVector.vector.length !== expectedDimension) {
+      result.errors.push(`Vector dimension mismatch: expected ${expectedDimension}, got ${sampleVector.vector.length}`);
+    }
+  }
+
+  result.isValid = result.errors.length === 0;
+  
+  if (result.isValid) {
+    debugLog(`✅ ${filePath} validation passed: ${vectorData.vectors.length} vectors`, 'info');
+  } else {
+    debugLog(`❌ ${filePath} validation failed:`, 'error');
+    result.errors.forEach(error => debugLog(`  - ${error}`, 'error'));
+    result.warnings.forEach(warning => debugLog(`  - ${warning}`, 'warn'));
+  }
+
+  return result;
 }

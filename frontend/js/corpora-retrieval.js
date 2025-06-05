@@ -9,6 +9,7 @@ import {
   safeAsync, 
   startTimer, 
   isValidVectorData,
+  validateVectorDataDetailed,
   fromApiLanguageCode 
 } from './utils.js';
 
@@ -23,7 +24,9 @@ import {
  * @returns {string} Cache key
  */
 function getCacheKey(vectorType, language = 'all') {
-  return `pragmatic_vectors_${vectorType}_${language}_${config.MODELS.EMBEDDING.name}`;
+  // Use the transformersId for cache key to be more specific
+  const modelKey = config.MODELS.EMBEDDING.transformersId || config.MODELS.EMBEDDING.name;
+  return `pragmatic_vectors_${vectorType}_${language}_${modelKey.replace('/', '_')}`;
 }
 
 /**
@@ -168,30 +171,66 @@ function clearOldCacheEntries() {
 // =====================================
 
 /**
- * Load a single vector file from the server
+ * Load a single vector file from the server - UPDATED with better validation
  * @param {string} filePath - Path to vector file
  * @returns {Promise<Object>} Vector data object
  */
 const loadVectorFile = safeAsync(async (filePath) => {
   const endTimer = startTimer(`Loading vector file: ${filePath}`);
   
-  const response = await fetch(filePath);
-  
-  if (!response.ok) {
-    throw new Error(`Failed to load ${filePath}: ${response.status} ${response.statusText}`);
-  }
+  try {
+    const response = await fetch(filePath);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to load ${filePath}: ${response.status} ${response.statusText}`);
+    }
 
-  const vectorData = await response.json();
-  
-  // Validate the loaded data structure
-  if (!isValidVectorData(vectorData)) {
-    throw new Error(`Invalid vector data structure in ${filePath}`);
-  }
+    const vectorData = await response.json();
+    
+    // Use detailed validation for better error reporting
+    const validation = validateVectorDataDetailed(vectorData, filePath);
+    
+    if (!validation.isValid) {
+      const errorDetails = validation.errors.join('; ');
+      throw new Error(`Invalid vector data in ${filePath}: ${errorDetails}`);
+    }
+    
+    // Log warnings if any
+    if (validation.warnings.length > 0) {
+      validation.warnings.forEach(warning => debugLog(`⚠️ ${filePath}: ${warning}`, 'warn'));
+    }
 
-  endTimer();
-  debugLog(`Loaded ${vectorData.vectors.length} vectors from ${filePath}`, 'info');
-  
-  return vectorData;
+    endTimer();
+    debugLog(`✅ Loaded ${vectorData.vectors.length} vectors from ${filePath} (${vectorData.metadata.model}, ${vectorData.metadata.dimension}D)`, 'info');
+    
+    return vectorData;
+    
+  } catch (error) {
+    endTimer();
+    // Enhanced error message for debugging
+    debugLog(`❌ Failed to load ${filePath}: ${error.message}`, 'error');
+    
+    // Log additional context if available
+    try {
+      const response = await fetch(filePath);
+      if (response.ok) {
+        const text = await response.text();
+        debugLog(`File content preview: ${text.substring(0, 200)}...`, 'info');
+        
+        // Try to parse and show what's wrong
+        const data = JSON.parse(text);
+        debugLog(`File structure: metadata=${!!data.metadata}, vectors=${!!data.vectors}, vectorCount=${data.vectors?.length || 0}`, 'info');
+        
+        if (data.metadata) {
+          debugLog(`Metadata: model=${data.metadata.model}, dimension=${data.metadata.dimension}`, 'info');
+        }
+      }
+    } catch (debugError) {
+      debugLog(`Could not load file for debugging: ${debugError.message}`, 'warn');
+    }
+    
+    throw error;
+  }
   
 }, 'VECTOR_LOAD');
 
@@ -205,25 +244,44 @@ export const loadAllVectors = safeAsync(async (useCache = true) => {
   
   const vectorTypes = ['document', 'section', 'paragraph'];
   const vectors = {};
+  const errors = [];
 
   for (const type of vectorTypes) {
-    // Try cache first if enabled
-    if (useCache) {
-      const cached = getCachedVectors(type);
-      if (cached) {
-        vectors[type] = cached;
-        continue;
+    try {
+      // Try cache first if enabled
+      if (useCache) {
+        const cached = getCachedVectors(type);
+        if (cached) {
+          vectors[type] = cached;
+          continue;
+        }
       }
-    }
 
-    // Load from server if not cached
-    const filePath = config.CORPUS.VECTOR_PATHS[type];
-    const vectorData = await loadVectorFile(filePath);
-    
-    // Cache for future use
-    setCachedVectors(type, vectorData);
-    
-    vectors[type] = vectorData;
+      // Load from server if not cached
+      const filePath = config.CORPUS.VECTOR_PATHS[type];
+      debugLog(`Loading ${type} vectors from ${filePath}`, 'info');
+      
+      const vectorData = await loadVectorFile(filePath);
+      
+      // Cache for future use
+      setCachedVectors(type, vectorData);
+      
+      vectors[type] = vectorData;
+      
+    } catch (error) {
+      debugLog(`Failed to load ${type} vectors: ${error.message}`, 'error');
+      errors.push(`${type}: ${error.message}`);
+      
+      // Create empty structure to prevent complete failure
+      vectors[type] = {
+        metadata: {
+          model: config.MODELS.EMBEDDING.name,
+          dimension: config.MODELS.EMBEDDING.dimension,
+          error: error.message
+        },
+        vectors: []
+      };
+    }
   }
 
   endTimer();
@@ -232,7 +290,23 @@ export const loadAllVectors = safeAsync(async (useCache = true) => {
   const totalVectors = Object.values(vectors).reduce(
     (sum, data) => sum + data.vectors.length, 0
   );
-  debugLog(`Loaded ${totalVectors} total vectors across all types`, 'info');
+  
+  if (errors.length > 0) {
+    debugLog(`⚠️ Loaded vectors with ${errors.length} errors:`, 'warn');
+    errors.forEach(error => debugLog(`  - ${error}`, 'warn'));
+  }
+  
+  debugLog(`📊 Vector loading summary: ${totalVectors} total vectors across ${vectorTypes.length} types`, 'info');
+  
+  // Provide helpful information about what was loaded
+  vectorTypes.forEach(type => {
+    const data = vectors[type];
+    if (data.vectors.length > 0) {
+      debugLog(`  ✅ ${type}: ${data.vectors.length} vectors (${data.metadata.model})`, 'info');
+    } else {
+      debugLog(`  ❌ ${type}: 0 vectors (${data.metadata.error || 'unknown error'})`, 'warn');
+    }
+  });
   
   return vectors;
   
@@ -529,25 +603,42 @@ export const loadVectorDataLegacyFormat = safeAsync(async (useCache = true) => {
   return vectorData;
 }, 'VECTOR_LOAD');
 
-// =====================================
-// INITIALIZATION
-// =====================================
-
 /**
- * Initialize corpus system with legacy format (matches your existing pattern)
+ * Initialize corpus system with legacy format (matches your existing pattern) - ENHANCED
  * @returns {Promise<Object>} Object with vectorData and documentDatabase
  */
 export const initializeCorpusLegacyFormat = safeAsync(async () => {
-  debugLog('Initializing corpus system...', 'info');
+  debugLog('🚀 Initializing corpus system...', 'info');
   
   try {
+    // Validate that config is properly loaded
+    if (!config || !config.MODELS || !config.MODELS.EMBEDDING) {
+      throw new Error('Configuration not properly loaded - check config.js import');
+    }
+    
+    if (!config.CORPUS || !config.CORPUS.VECTOR_PATHS) {
+      throw new Error('Corpus configuration missing - check CORPUS section in config.js');
+    }
+    
+    // Log configuration for debugging
+    debugLog(`📋 Using configuration:`, 'info');
+    debugLog(`  - Model name: ${config.MODELS.EMBEDDING.name}`, 'info');
+    debugLog(`  - Transformers ID: ${config.MODELS.EMBEDDING.transformersId}`, 'info');
+    debugLog(`  - Dimension: ${config.MODELS.EMBEDDING.dimension}`, 'info');
+    debugLog(`  - Domain: ${config.CORPUS.DOMAIN}`, 'info');
+    debugLog(`  - Cache enabled: ${config.DEV.CACHE_VECTORS_ONLY}`, 'info');
+    debugLog(`  - Vector paths:`, 'info');
+    Object.entries(config.CORPUS.VECTOR_PATHS).forEach(([type, path]) => {
+      debugLog(`    - ${type}: ${path}`, 'info');
+    });
+    
     // Load vectors in your expected format
     const vectorData = await loadVectorDataLegacyFormat();
     
     // Load document databases for title lookup
     const documentDatabase = await loadDocumentDatabases();
     
-    debugLog('Corpus system initialized successfully', 'info');
+    debugLog('✅ Corpus system initialized successfully', 'info');
     
     return {
       vectorData,
@@ -555,7 +646,15 @@ export const initializeCorpusLegacyFormat = safeAsync(async () => {
     };
     
   } catch (error) {
-    debugLog(`Corpus initialization failed: ${error.message}`, 'error');
+    debugLog(`❌ Corpus initialization failed: ${error.message}`, 'error');
+    
+    // Provide helpful troubleshooting information
+    debugLog('🔧 Troubleshooting suggestions:', 'info');
+    debugLog('  1. Check that vector files exist at expected paths', 'info');
+    debugLog('  2. Verify vector files have correct jina-embeddings-v3 format', 'info');
+    debugLog('  3. Ensure model name and dimension match in config.js', 'info');
+    debugLog('  4. Try clearing cache: localStorage.clear()', 'info');
+    
     throw error;
   }
 }, 'VECTOR_LOAD');
