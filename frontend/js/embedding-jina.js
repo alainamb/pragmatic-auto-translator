@@ -4,6 +4,7 @@
 
 import config from './config.js';
 import { debugLog, createError, safeAsync, startTimer, cleanText } from './utils.js';
+import LOCAL_API_CONFIG from './api-config.js';
 
 // =====================================
 // ENVIRONMENT & CONFIG
@@ -90,6 +91,9 @@ export function storeApiKeyLocally(apiKey) {
 /**
  * Get API key with smart environment detection
  */
+/**
+ * Get API key with smart environment detection
+ */
 async function getApiKey() {
   const environment = detectEnvironment();
   
@@ -98,12 +102,23 @@ async function getApiKey() {
     return JINA_CONFIG.API_KEY;
   }
   
-  // 2. For local development, check localStorage
+  // 2. For local development, try multiple sources
   if (environment === 'local_development') {
+    // 2a. Check localStorage
     const storedKey = localStorage.getItem('jina_api_key');
     if (storedKey) {
       debugLog('Using API key from localStorage', 'info');
       return storedKey;
+    }
+    
+    // 2b. Try loading from local api-config.js file
+    try {
+      if (LOCAL_API_CONFIG?.API_KEY) {
+        debugLog('Using API key from api-config.js', 'info');
+        return LOCAL_API_CONFIG.API_KEY;
+      }
+    } catch (error) {
+      debugLog('Could not load api-config.js: ' + error.message, 'warn');
     }
   }
   

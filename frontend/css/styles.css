@@ -761,10 +761,85 @@ li {
 }
 
 .corpus-info {
-    background-color: var(--gray-100);
+    background: #f8f9fa;;
     padding: 1rem;
     border-radius: 0.5rem;
     margin: 1rem 0;
     font-size: 0.875rem;
     color: var(--gray-600);
+}
+
+/* Context Similarity and Priority */
+
+.similarity-options {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin: 15px;
+  border-left: 3px solid var(--accent-color);
+}
+
+.option-group {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 40px;
+  height: 20px;
+  background: #ccc;
+  border-radius: 20px;
+  transition: background 0.3s;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s;
+}
+
+input[type="checkbox"]:checked + .toggle-slider {
+  background: var(--accent-color);
+}
+
+input[type="checkbox"]:checked + .toggle-slider::before {
+  transform: translateX(20px);
+}
+
+input[type="checkbox"] {
+  display: none;
+}
+
+.info-link {
+  color: var(--accent-color);
+  text-decoration: none;
+  font-weight: bold;
+  cursor: help;
+}
+
+.info-link:hover {
+  color: var(--gray-700);
+}
+
+#priorityStrategy {
+  padding: 5px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
 }

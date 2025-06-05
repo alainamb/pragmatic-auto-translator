@@ -50,6 +50,27 @@
             <button id="translateButton" class="translate-button">
                 Translate with Context
             </button>
+            <!-- Similarity and Strategy Options -->
+            <div class="similarity-options">
+            <div class="option-group">
+                <label class="toggle-container">
+                <input type="checkbox" id="advancedScoring" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Advanced Similarity Scoring</span>
+                <a href="#" class="info-link" id="scoringInfo">ℹ️</a>
+                </label>
+            </div>
+            
+            <div class="option-group">
+                <label for="priorityStrategy">Context Strategy:</label>
+                <select id="priorityStrategy">
+                <option value="balanced">Balanced (recommended)</option>
+                <option value="documents-first">Documents First (discourse focus)</option>
+                <option value="paragraphs-first">Paragraphs First (terminology focus)</option>
+                </select>
+                <a href="#" class="info-link" id="strategyInfo">ℹ️</a>
+            </div>
+            </div>
             <div id="statusIndicator" class="status-indicator hidden"></div>
         </section>
 

@@ -87,7 +87,13 @@ export const SIMILARITY = {
   },
   
   // Maximum total context length to send to translation API
-  MAX_CONTEXT_LENGTH: 10000 // characters (context passages, not full docs)
+  MAX_CONTEXT_LENGTH: 10000, // characters (context passages, not full docs)
+
+  // Similarity strategy options
+  STRATEGIES: {
+    useAdvancedScoring: true,    // Enable level-specific scoring
+    defaultPriorityStrategy: 'balanced'  // 'balanced', 'documents-first', 'paragraphs-first'
+  }
 };
 
 // UI Configuration
